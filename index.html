@@ -76,10 +76,18 @@
 
         const formatCurrency = (amount) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
         
+        // FUNCIÓN CORREGIDA PARA EL FORMATO DE FECHA
         const getNextMonthYear = () => {
             const date = new Date();
             date.setMonth(date.getMonth() + 1);
-            return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            const options = { month: 'long', year: 'numeric' };
+            let formatted = date.toLocaleDateString('es-ES', options);
+            
+            // Elimina el " de " (ej: "enero de 2026" -> "enero 2026")
+            formatted = formatted.replace(/ de /g, ' ');
+            
+            // Mayúscula inicial (ej: "enero 2026" -> "Enero 2026")
+            return formatted.charAt(0).toUpperCase() + formatted.slice(1);
         };
 
         const App = () => {
@@ -329,14 +337,14 @@
                     {showReport && (
                         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                             <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl">
-<div className="flex justify-between mb-4">
-    <h3 className="font-bold capitalize">
-        {getNextMonthYear()}
-    </h3>
-    <button onClick={() => setShowReport(false)}><XIcon/></button>
-</div>
+                                <div className="flex justify-between mb-4">
+                                    <h3 className="font-bold">
+                                        {getNextMonthYear()}
+                                    </h3>
+                                    <button onClick={() => setShowReport(false)}><XIcon/></button>
+                                </div>
             
-            <div className="space-y-4 text-sm max-h-96 overflow-y-auto pr-2 no-scrollbar">
+                                <div className="space-y-4 text-sm max-h-96 overflow-y-auto pr-2 no-scrollbar">
                                     {/* ITAU */}
                                     <section>
                                         <div className="flex justify-between items-end border-b-2 border-orange-500 pb-1 mb-2">
@@ -384,4 +392,3 @@
     </script>
 </body>
 </html>
-
