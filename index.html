@@ -9,14 +9,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Flor">
     
-    <link rel="apple-touch-icon" href="flor.png">
-    <link rel="icon" type="image/png" href="flor.png">
+    <link rel="apple-touch-icon" href="polla.png">
+    <link rel="icon" type="image/png" href="polla.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <style>
         body {
@@ -38,20 +37,15 @@
             width: 100%;
             outline: none;
         }
-        @media all and (display-mode: standalone) {
-            body { padding-top: env(safe-area-inset-top); }
-        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="module">
-        // Importamos Firebase desde el CDN de Google (versión modular)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Tu configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyDK61HCOgOis2LeFdbISwZKat-sGi_vCUs",
             authDomain: "flor-finanzas.firebaseapp.com",
@@ -64,7 +58,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Pasamos Firebase a la ventana global para que Babel pueda usarlo
         window.db = db;
         window.firebaseDoc = doc;
         window.firebaseOnSnapshot = onSnapshot;
@@ -72,18 +65,17 @@
     </script>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
 
-        // Iconos simplificados
-        const WalletIcon = () => <span className="text-2xl">💰</span>;
-        const CreditCardIcon = () => <span className="text-2xl">💳</span>;
-        const CalendarIcon = () => <span className="text-2xl">🗓️</span>;
-        const ShareIcon = () => <span className="text-lg">📤</span>;
-        const TrashIcon = () => <span className="text-lg">🗑️</span>;
-        const XIcon = () => <span className="text-lg">✖️</span>;
-        const CheckIcon = () => <span className="text-lg">✅</span>;
+        const WalletIcon = () => <span>💰</span>;
+        const CreditCardIcon = () => <span>💳</span>;
+        const CalendarIcon = () => <span>🗓️</span>;
+        const TrashIcon = () => <span>🗑️</span>;
+        const XIcon = () => <span>✖️</span>;
+        const CheckIcon = () => <span>✅</span>;
 
         const formatCurrency = (amount) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
+        
         const getNextMonthYear = () => {
             const date = new Date();
             date.setMonth(date.getMonth() + 1);
@@ -95,13 +87,11 @@
             const [showReport, setShowReport] = useState(false);
             const [loading, setLoading] = useState(true);
 
-            // Estados Globales
             const [transactions, setTransactions] = useState([]);
             const [debtBalance, setDebtBalance] = useState(0);
             const [initialDebt, setInitialDebt] = useState(0);
             const [installments, setInstallments] = useState([]);
 
-            // Estados de Formularios
             const [amount, setAmount] = useState('');
             const [detail, setDetail] = useState('');
             const [account, setAccount] = useState('Itaú');
@@ -109,13 +99,12 @@
             const [debtDetail, setDebtDetail] = useState('');
             const [initialDebtInput, setInitialDebtInput] = useState('');
             const [isSettingDebt, setIsSettingDebt] = useState(false);
+            
             const [instAmount, setInstAmount] = useState('');
             const [instDetail, setInstDetail] = useState('');
             const [instTotal, setInstTotal] = useState('');
             const [instPaid, setInstPaid] = useState('');
-            const [instAccount, setInstAccount] = useState('BCH');
 
-            // --- SINCRONIZACIÓN CON FIREBASE ---
             useEffect(() => {
                 const docRef = window.firebaseDoc(window.db, "finanzas", "datos_globales");
                 const unsub = window.firebaseOnSnapshot(docRef, (docSnap) => {
@@ -134,15 +123,13 @@
             const sync = async (update) => {
                 const docRef = window.firebaseDoc(window.db, "finanzas", "datos_globales");
                 await window.firebaseSetDoc(docRef, {
-                    transactions,
-                    debtBalance,
-                    initialDebt,
-                    installments,
-                    ...update
+                    transactions: update.transactions !== undefined ? update.transactions : transactions,
+                    debtBalance: update.debtBalance !== undefined ? update.debtBalance : debtBalance,
+                    initialDebt: update.initialDebt !== undefined ? update.initialDebt : initialDebt,
+                    installments: update.installments !== undefined ? update.installments : installments
                 }, { merge: true });
             };
 
-            // --- LÓGICA DE NEGOCIO ---
             const addTransaction = () => {
                 if (!amount || !detail) return;
                 const newT = { id: Date.now(), date: new Date().toISOString(), amount: parseInt(amount), detail, account, type: 'normal' };
@@ -154,9 +141,13 @@
 
             const deleteTransaction = (id) => {
                 if(!confirm('¿Eliminar registro?')) return;
+                const tToDelete = transactions.find(t => t.id === id);
+                let newDebtBalance = debtBalance;
+                if (tToDelete && tToDelete.type === 'debt') { newDebtBalance += tToDelete.amount; }
                 const newList = transactions.filter(t => t.id !== id);
                 setTransactions(newList);
-                sync({ transactions: newList });
+                setDebtBalance(newDebtBalance);
+                sync({ transactions: newList, debtBalance: newDebtBalance });
             };
 
             const payDebt = () => {
@@ -180,7 +171,7 @@
                             date: new Date().toISOString(), 
                             amount: item.amount, 
                             detail: `${item.detail} (Cuota ${nextQuota}/${item.totalQuotas})`, 
-                            account: item.account, 
+                            account: 'Itaú', 
                             type: 'normal' 
                         };
                         const newList = [...transactions, newT];
@@ -195,86 +186,89 @@
             };
 
             const deleteInstallmentDebt = (id) => {
-                if(!confirm('¿Eliminar recurrente?')) return;
+                if(!confirm('¿Eliminar esta deuda de la lista?')) return;
                 const newList = installments.filter(i => i.id !== id);
                 setInstallments(newList);
                 sync({ installments: newList });
             };
 
-            // Reporte y Cálculos (Igual que versión estable)
             const transactionsThisMonth = transactions.filter(t => {
                 const tDate = new Date(t.date);
                 const now = new Date();
                 return tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear();
             });
-            const itauTransactions = transactionsThisMonth.filter(t => t.account === 'Itaú');
-            const bchTransactions = transactionsThisMonth.filter(t => t.account === 'BCH');
-            const tenpoTransactions = transactionsThisMonth.filter(t => t.account === 'Tenpo');
-            const totalGeneral = transactionsThisMonth.reduce((acc, curr) => acc + curr.amount, 0);
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">Sincronizando con la nube...</div>;
+            const itauTrans = transactionsThisMonth.filter(t => t.account === 'Itaú');
+            const bchTrans = transactionsThisMonth.filter(t => t.account === 'BCH');
+            const tenpoTrans = transactionsThisMonth.filter(t => t.account === 'Tenpo');
+
+            const totalItau = itauTrans.reduce((acc, c) => acc + c.amount, 0);
+            const totalBch = bchTrans.reduce((acc, c) => acc + c.amount, 0);
+            const totalTenpo = tenpoTrans.reduce((acc, c) => acc + c.amount, 0);
+
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">Sincronizando...</div>;
 
             return (
                 <div className="h-screen flex flex-col bg-slate-50">
-                    {/* Header */}
-                    <div className="pt-14 pb-4 px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-slate-200 flex justify-between items-center">
-                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
-                            {activeTab === 'settlement' ? 'Liquidación' : activeTab === 'debt' ? 'Deuda Global' : 'Cuotas'}
+                    <div className="pt-14 pb-4 px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b flex justify-between items-center">
+                        <h1 className="text-2xl font-bold text-slate-800">
+                            {activeTab === 'settlement' ? 'Liquidación' : activeTab === 'debt' ? 'Deuda Global' : 'Cuotas Fijas'}
                         </h1>
-                        {activeTab === 'settlement' && (
-                            <button onClick={() => setShowReport(true)} className="text-blue-600 font-semibold text-lg ios-btn">Reporte</button>
-                        )}
+                        <button onClick={() => setShowReport(true)} className="text-blue-600 font-semibold ios-btn">Reporte</button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto no-scrollbar pb-32 px-4 pt-6">
                         {activeTab === 'settlement' && (
                             <div className="space-y-6">
-                                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                                    <div className="relative mb-4">
-                                        <span className="absolute left-4 top-4 text-slate-400 text-lg">$</span>
-                                        <input type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className="ios-input pl-8 font-semibold text-slate-800" placeholder="0"/>
-                                    </div>
+                                <div className="bg-white p-5 rounded-3xl shadow-sm border">
+                                    <input type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className="ios-input mb-4" placeholder="Monto $"/>
                                     <div className="grid grid-cols-3 gap-3 mb-4">
                                         {['Itaú', 'BCH', 'Tenpo'].map(b => (
-                                            <button key={b} onClick={() => setAccount(b)} className={`py-3 rounded-xl font-medium transition-all text-xs ${account === b ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{b}</button>
+                                            <button key={b} onClick={() => setAccount(b)} className={`py-3 rounded-xl text-xs font-bold ${account === b ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}>{b}</button>
                                         ))}
                                     </div>
-                                    <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} className="ios-input mb-6" placeholder="Detalle del gasto"/>
-                                    <button onClick={addTransaction} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-semibold text-lg ios-btn">Agregar Pago</button>
+                                    <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} className="ios-input mb-4" placeholder="Detalle"/>
+                                    <button onClick={addTransaction} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold ios-btn">Agregar</button>
                                 </div>
-                                
-                                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                                <div className="bg-white p-5 rounded-3xl shadow-sm border">
                                     <h3 className="font-bold mb-4">Pagos del mes</h3>
-                                    <ul className="space-y-3">
-                                        {transactionsThisMonth.filter(t => t.type === 'normal').sort((a,b)=> b.id - a.id).map(t => (
-                                            <li key={t.id} className="flex justify-between items-center text-sm border-b pb-2">
-                                                <div><p className="font-medium">{t.detail}</p><p className="text-[10px] uppercase text-slate-400">{t.account}</p></div>
-                                                <div className="flex items-center gap-2"><span className="font-bold">{formatCurrency(t.amount)}</span><button onClick={() => deleteTransaction(t.id)}><TrashIcon/></button></div>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    {transactionsThisMonth.filter(t => t.type === 'normal').sort((a,b)=>b.id-a.id).map(t => (
+                                        <div key={t.id} className="flex justify-between items-center border-b py-3">
+                                            <div><p className="font-medium">{t.detail}</p><p className="text-[10px] uppercase text-slate-400 font-bold">{t.account}</p></div>
+                                            <div className="flex items-center gap-3"><span className="font-bold">{formatCurrency(t.amount)}</span><button onClick={()=>deleteTransaction(t.id)} className="text-slate-300"><TrashIcon/></button></div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'debt' && (
                             <div className="space-y-6">
-                                <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-3xl text-white shadow-lg">
-                                    <p className="text-sm opacity-80">Deuda Pendiente</p>
+                                <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-3xl text-white">
+                                    <p className="text-xs opacity-80">Saldo Pendiente</p>
                                     <h2 className="text-4xl font-bold mb-4">{formatCurrency(debtBalance)}</h2>
-                                    <button onClick={() => setIsSettingDebt(!isSettingDebt)} className="text-xs bg-white/20 px-3 py-1 rounded-full">Configurar saldo</button>
+                                    <button onClick={() => setIsSettingDebt(!isSettingDebt)} className="text-[10px] bg-white/20 px-3 py-1 rounded-full uppercase font-bold tracking-wider">Ajustar Saldo Total</button>
                                 </div>
                                 {isSettingDebt && (
                                     <div className="bg-white p-5 rounded-3xl border">
-                                        <input type="number" value={initialDebtInput} onChange={(e) => setInitialDebtInput(e.target.value)} className="ios-input mb-4" placeholder="Monto total"/>
-                                        <button onClick={() => { setDebtBalance(parseInt(initialDebtInput)); setInitialDebt(parseInt(initialDebtInput)); sync({debtBalance: parseInt(initialDebtInput), initialDebt: parseInt(initialDebtInput)}); setIsSettingDebt(false); }} className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-semibold">Guardar</button>
+                                        <input type="number" value={initialDebtInput} onChange={(e) => setInitialDebtInput(e.target.value)} className="ios-input mb-4" placeholder="Nuevo saldo total"/>
+                                        <button onClick={() => { setDebtBalance(parseInt(initialDebtInput)); sync({debtBalance: parseInt(initialDebtInput)}); setIsSettingDebt(false); }} className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-bold">Guardar</button>
                                     </div>
                                 )}
                                 <div className="bg-white p-5 rounded-3xl border">
-                                    <h3 className="font-bold mb-4">Registrar Abono</h3>
-                                    <input type="number" value={debtPayment} onChange={(e) => setDebtPayment(e.target.value)} className="ios-input mb-4" placeholder="Monto"/>
-                                    <input type="text" value={debtDetail} onChange={(e) => setDebtDetail(e.target.value)} className="ios-input mb-4" placeholder="Detalle"/>
-                                    <button onClick={payDebt} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-semibold">Abonar</button>
+                                    <h3 className="font-bold mb-4">Nuevo Abono (en BCH)</h3>
+                                    <input type="number" value={debtPayment} onChange={(e) => setDebtPayment(e.target.value)} className="ios-input mb-4" placeholder="Monto abono"/>
+                                    <input type="text" value={debtDetail} onChange={(e) => setDebtDetail(e.target.value)} className="ios-input mb-4" placeholder="Ej: Abono Marzo"/>
+                                    <button onClick={payDebt} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">Registrar Abono</button>
+                                </div>
+                                <div className="bg-white p-5 rounded-3xl border">
+                                    <h3 className="font-bold mb-4">Historial de Abonos</h3>
+                                    {transactionsThisMonth.filter(t => t.type === 'debt').map(t => (
+                                        <div key={t.id} className="flex justify-between items-center border-b py-3">
+                                            <div><p className="font-medium">{t.detail}</p><p className="text-[10px] text-indigo-500 font-bold">BCH</p></div>
+                                            <div className="flex items-center gap-3"><span className="font-bold">{formatCurrency(t.amount)}</span><button onClick={()=>deleteTransaction(t.id)} className="text-slate-300"><TrashIcon/></button></div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -282,62 +276,100 @@
                         {activeTab === 'installments' && (
                             <div className="space-y-6">
                                 <div className="bg-white p-5 rounded-3xl border">
-                                    <h3 className="font-bold mb-4">Nueva Deuda en Cuotas</h3>
+                                    <h3 className="font-bold mb-4">Nueva Deuda</h3>
                                     <input type="number" value={instAmount} onChange={(e) => setInstAmount(e.target.value)} className="ios-input mb-4" placeholder="Monto cuota"/>
                                     <div className="flex gap-2 mb-4">
                                         <input type="number" value={instTotal} onChange={(e) => setInstTotal(e.target.value)} className="ios-input w-1/2" placeholder="Total cuotas"/>
-                                        <input type="number" value={instPaid} onChange={(e) => setInstPaid(e.target.value)} className="ios-input w-1/2" placeholder="Pagadas"/>
+                                        <input type="number" value={instPaid} onChange={(e) => setInstPaid(e.target.value)} className="ios-input w-1/2" placeholder="Ya pagadas"/>
                                     </div>
-                                    <select value={instAccount} onChange={(e) => setInstAccount(e.target.value)} className="ios-input mb-4 w-full">
-                                        <option value="Itaú">Itaú</option><option value="BCH">BCH</option><option value="Tenpo">Tenpo</option>
-                                    </select>
                                     <input type="text" value={instDetail} onChange={(e) => setInstDetail(e.target.value)} className="ios-input mb-4" placeholder="Detalle"/>
                                     <button onClick={() => {
-                                        const newInst = { id: Date.now(), amount: parseInt(instAmount), detail: instDetail, totalQuotas: parseInt(instTotal), currentQuota: parseInt(instPaid||0), account: instAccount, active: true };
-                                        const newList = [...installments, newInst];
+                                        const newI = { id: Date.now(), amount: parseInt(instAmount), detail: instDetail, totalQuotas: parseInt(instTotal), currentQuota: parseInt(instPaid||0), account: 'Itaú', active: true };
+                                        const newList = [...installments, newI];
                                         setInstallments(newList);
                                         sync({ installments: newList });
                                         setInstAmount(''); setInstDetail(''); setInstTotal(''); setInstPaid('');
-                                    }} className="w-full bg-teal-600 text-white py-4 rounded-2xl font-semibold">Guardar</button>
+                                    }} className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold">Guardar</button>
                                 </div>
-                                {installments.map(item => (
-                                    <div key={item.id} className="bg-white p-5 rounded-3xl border relative">
-                                        <div className="flex justify-between mb-2">
-                                            <div><h4 className="font-bold">{item.detail}</h4><p className="text-xs text-slate-400">{item.account}</p></div>
-                                            <div className="text-right font-bold">{formatCurrency(item.amount)}</div>
+                                {installments.map(item => {
+                                    const isPaidOff = item.currentQuota >= item.totalQuotas;
+                                    return (
+                                        <div key={item.id} className={`bg-white p-5 rounded-3xl border transition-all ${isPaidOff ? 'border-green-200 bg-green-50/30' : ''}`}>
+                                            <div className="flex justify-between mb-2">
+                                                <div><h4 className="font-bold">{item.detail}</h4><p className="text-[10px] text-slate-400 font-bold uppercase">{item.account}</p></div>
+                                                <div className="text-right">
+                                                    <p className="font-bold">{formatCurrency(item.amount)}</p>
+                                                    <p className="text-[10px] text-slate-500 font-bold">{item.currentQuota} de {item.totalQuotas} cuotas</p>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-slate-100 h-2 rounded-full mb-4">
+                                                <div className={`h-2 rounded-full transition-all ${isPaidOff ? 'bg-green-500' : 'bg-teal-500'}`} style={{width: `${(item.currentQuota/item.totalQuotas)*100}%`}}></div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {!isPaidOff ? (
+                                                    <button onClick={() => payInstallmentQuota(item.id)} className="flex-1 bg-slate-800 text-white py-3 rounded-xl text-sm font-bold ios-btn">Pagar Cuota {item.currentQuota + 1}</button>
+                                                ) : (
+                                                    <div className="flex-1 bg-green-100 text-green-700 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><CheckIcon/> DEUDA PAGADA</div>
+                                                )}
+                                                <button onClick={() => deleteInstallmentDebt(item.id)} className="px-4 bg-red-50 text-red-500 rounded-xl ios-btn"><TrashIcon/></button>
+                                            </div>
                                         </div>
-                                        <div className="w-full bg-slate-100 h-2 rounded-full mb-4">
-                                            <div className="bg-teal-500 h-2 rounded-full" style={{width: `${(item.currentQuota/item.totalQuotas)*100}%`}}></div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => payInstallmentQuota(item.id)} className="flex-1 bg-slate-800 text-white py-2 rounded-lg text-sm">Pagar Cuota {item.currentQuota + 1}</button>
-                                            <button onClick={() => deleteInstallmentDebt(item.id)} className="px-3 bg-red-50 text-red-500 rounded-lg"><TrashIcon/></button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
 
-                    {/* Navbar */}
-                    <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t pb-8 pt-3 flex justify-around">
-                        <button onClick={() => setActiveTab('settlement')} className={`flex flex-col items-center ${activeTab === 'settlement' ? 'text-blue-600' : 'text-slate-400'}`}><CreditCardIcon/><span className="text-[10px]">Liquidación</span></button>
-                        <button onClick={() => setActiveTab('installments')} className={`flex flex-col items-center ${activeTab === 'installments' ? 'text-teal-600' : 'text-slate-400'}`}><CalendarIcon/><span className="text-[10px]">Cuotas</span></button>
-                        <button onClick={() => setActiveTab('debt')} className={`flex flex-col items-center ${activeTab === 'debt' ? 'text-indigo-600' : 'text-slate-400'}`}><WalletIcon/><span className="text-[10px]">Deuda Global</span></button>
+                    <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t pb-8 pt-3 flex justify-around">
+                        <button onClick={() => setActiveTab('settlement')} className={`flex flex-col items-center ${activeTab === 'settlement' ? 'text-blue-600' : 'text-slate-400'}`}><CreditCardIcon/><span className="text-[10px] font-bold">Liquidación</span></button>
+                        <button onClick={() => setActiveTab('installments')} className={`flex flex-col items-center ${activeTab === 'installments' ? 'text-teal-600' : 'text-slate-400'}`}><CalendarIcon/><span className="text-[10px] font-bold">Cuotas</span></button>
+                        <button onClick={() => setActiveTab('debt')} className={`flex flex-col items-center ${activeTab === 'debt' ? 'text-indigo-600' : 'text-slate-400'}`}><WalletIcon/><span className="text-[10px] font-bold">Deuda</span></button>
                     </div>
 
-                    {/* Modal Reporte (Versión Compacta) */}
                     {showReport && (
-                        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                            <div className="bg-white w-full max-w-sm rounded-3xl p-6">
-                                <div className="flex justify-between mb-4"><h3 className="font-bold">Reporte {getNextMonthYear()}</h3><button onClick={()=>setShowReport(false)}><XIcon/></button></div>
-                                <div className="space-y-4 text-sm max-h-96 overflow-y-auto pr-2">
-                                    <div><p className="font-bold text-orange-500 border-b">Itaú</p>{itauTransactions.map(t=>(<div key={t.id} className="flex justify-between"><span>{t.detail}</span><span>{formatCurrency(t.amount)}</span></div>))}</div>
-                                    <div><p className="font-bold text-blue-600 border-b">BCH</p>{bchTransactions.map(t=>(<div key={t.id} className="flex justify-between"><span>{t.detail}</span><span>{formatCurrency(t.amount)}</span></div>))}</div>
-                                    <div><p className="font-bold text-purple-600 border-b">Tenpo</p>{tenpoTransactions.map(t=>(<div key={t.id} className="flex justify-between"><span>{t.detail}</span><span>{formatCurrency(t.amount)}</span></div>))}</div>
-                                    <div className="pt-2 border-t font-bold flex justify-between"><span>TOTAL</span><span>{formatCurrency(totalGeneral)}</span></div>
+                        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl">
+<div className="flex justify-between mb-4">
+                <h3 className="font-bold">Reporte {getNextMonthYear()}</h3>
+                <button onClick={() => setShowReport(false)}><XIcon/></button>
+            </div>
+            
+            <div className="space-y-4 text-sm max-h-96 overflow-y-auto pr-2 no-scrollbar">
+                                    {/* ITAU */}
+                                    <section>
+                                        <div className="flex justify-between items-end border-b-2 border-orange-500 pb-1 mb-2">
+                                            <p className="text-xs font-black text-orange-500 uppercase tracking-widest">Itaú</p>
+                                            <p className="text-sm font-black text-orange-600">{formatCurrency(totalItau)}</p>
+                                        </div>
+                                        {itauTrans.map(t=>(<div key={t.id} className="flex justify-between text-xs mb-1 text-slate-600"><span>- {t.detail}</span><span>{formatCurrency(t.amount)}</span></div>))}
+                                    </section>
+                                    
+                                    {/* BCH */}
+                                    <section>
+                                        <div className="flex justify-between items-end border-b-2 border-blue-600 pb-1 mb-2">
+                                            <p className="text-xs font-black text-blue-600 uppercase tracking-widest">BCH</p>
+                                            <p className="text-sm font-black text-blue-700">{formatCurrency(totalBch)}</p>
+                                        </div>
+                                        {bchTrans.map(t=>(<div key={t.id} className="flex justify-between text-xs mb-1 text-slate-600"><span>- {t.detail}</span><span>{formatCurrency(t.amount)}</span></div>))}
+                                    </section>
+                                    
+                                    {/* TENPO */}
+                                    {totalTenpo > 0 && (
+                                        <section>
+                                            <div className="flex justify-between items-end border-b-2 border-purple-600 pb-1 mb-2">
+                                                <p className="text-xs font-black text-purple-600 uppercase tracking-widest">Tenpo</p>
+                                                <p className="text-sm font-black text-purple-700">{formatCurrency(totalTenpo)}</p>
+                                            </div>
+                                            {tenpoTrans.map(t=>(<div key={t.id} className="flex justify-between text-xs mb-1 text-slate-600"><span>- {t.detail}</span><span>{formatCurrency(t.amount)}</span></div>))}
+                                        </section>
+                                    )}
+
+                                    <div className="pt-4 border-t-2 border-slate-900 flex justify-between items-center">
+                                        <span className="font-black text-sm uppercase">Total a Transferir</span>
+                                        <span className="text-xl font-black text-slate-900">{formatCurrency(totalItau + totalBch + totalTenpo)}</span>
+                                    </div>
                                 </div>
-                                <button onClick={() => alert('Función de imagen activada. Usa captura de pantalla por ahora.')} className="w-full bg-blue-600 text-white py-3 rounded-xl mt-4 font-bold">Compartir</button>
+                                <button onClick={()=>setShowReport(false)} className="w-full bg-slate-900 text-white py-4 rounded-2xl mt-8 font-bold ios-btn">Cerrar</button>
                             </div>
                         </div>
                     )}
@@ -350,4 +382,3 @@
     </script>
 </body>
 </html>
-
